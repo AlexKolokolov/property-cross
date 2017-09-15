@@ -11,7 +11,7 @@
         Ext.onReady(function() {
             var resultStore = new Ext.data.JsonStore({
                 root: 'listings',
-                fields: ['title','price_formatted'],
+                fields: ['title','summary','price_formatted'],
                 autoLoad: true,
                 proxy: new Ext.data.HttpProxy({
                     url: searchUrl
@@ -23,6 +23,7 @@
                 store: resultStore,
                 columns: [
                     {header: "Title", width: 100, dataIndex: 'title', sortable: true},
+                    {header: "Summary", width: 100, dataIndex: 'summary', sortable: true},
                     {header: "Price", width: 100, dataIndex: 'price_formatted', sortable: true}
                 ],
                 renderTo: Ext.getBody()
