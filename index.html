@@ -8,7 +8,7 @@
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/extjs/3.4.1-1/ext-all-debug.js"></script>
     <script>
         var baseUrl = 'https://api.nestoria.co.uk/api?country=uk&pretty=1&action=search_listings&encoding=json&listing_type=buy&page=1&place_name=';
-        var tip = "Use the form below to search for houses to buy. You can search by place-name, postcode, or click 'My location', to search in your current location!";
+        var tip = 'Use the form below to search for houses to buy. You can search by place-name, postcode, or click \'My location\', to search in your current location!';
 
         var searchPanel = new Ext.Panel({
             region: 'north',
@@ -28,6 +28,10 @@
             fields: ['thumb_url','title','summary','price_formatted','property_type','lister_url']
         });
 
+        var favouriteStore = new Ext.data.JsonStore({
+            fields: ['thumb_url','title','summary','price_formatted','property_type','lister_url']
+        });
+
         var renderThumbnail = function(val) {
             return '<img src=\'' + val + '\' >'
         };
@@ -38,7 +42,6 @@
 
         var resultGrid = new Ext.grid.GridPanel({
             title: 'Result',
-            store: resultStore,
             columns: [
                 {header: "Photo", width: 100, dataIndex: 'thumb_url', renderer: renderThumbnail},
                 {header: "Title", width: 300, dataIndex: 'title', sortable: true, renderer: renderTitle},
@@ -49,23 +52,22 @@
             hidden: true,
             loadMask: true,
             sm: new Ext.grid.RowSelectionModel({
-                singleSelect: true,
-                listeners: {
-                    rowselect: {
-                        fn: function (sm, index, record) {
-                            var win = new Ext.Window({
-                                title: 'Property details',
-                                height: 800,
-                                width: 600,
-                                autoLoad: {
-                                    url: record.data.lister_url
-                                }
-                            });
-                            win.show();
-                        }
+                singleSelect: true
+            }),
+            tbar: [{
+                text: 'Add to favorites',
+                onClick: function() {
+                    var sm = resultGrid.getSelectionModel();
+                    if (sm.hasSelection()) {
+                        var sel = sm.getSelected();
+                        favouriteStore.add(sel);
+                        console.log(favouriteStore);
+                        Ext.Msg.alert('Record saved','Record has been added to your favorites');
+                    } else {
+                        Ext.Msg.alert('Select a row!','No row was selected');
                     }
                 }
-            })
+            }]
         });
 
         Ext.onReady(function() {
@@ -77,9 +79,12 @@
             });
 
             var searchForm = new Ext.form.FormPanel({
-                width: 300,
                 padding: 5,
                 border: false,
+                layout: 'table',
+                layoutConfig: {
+                    columns: 2
+                },
                 items: [
                     {
                         xtype: 'panel',
@@ -87,25 +92,49 @@
                         padding: 5,
                         border: false
                     },{
+                        xtype: 'button',
+                        text: 'Favourites',
+                        width: 100,
+                        height: 25,
+                        onClick: function () {
+                            if (favouriteStore.data.length <= 0) {
+                                Ext.Msg.alert('No favourite records!','You haven\'t added any records to favourites yet');
+                            } else {
+                                resultGrid.title = 'Favourites';
+                                resultGrid.store = favouriteStore;
+                                resultGrid.getView().refresh();
+                            }
+                        }
+                    },{
                         xtype: 'textfield',
                         hideLabel: true,
                         width: 300,
                         height: 25,
-                        name: 'keyWord'
+                        name: 'keyWord',
+                        colspan: 2
                     },{
                         xtype: 'button',
                         text: 'GO',
                         width: 40,
                         height: 25,
+                        colspan: 2,
+                        cellCls: 'highlight',
                         onClick: function () {
-                            var searchUrl = baseUrl + searchForm.getForm().findField('keyWord').getValue();
-                            resultStore.proxy = new Ext.data.ScriptTagProxy({
-                                url: searchUrl
-                            });
-                            resultPanel.add(resultGrid);
-                            resultPanel.doLayout();
-                            resultGrid.show();
-                            resultStore.load();
+                            var keyWord = searchForm.getForm().findField('keyWord').getValue();
+                            if (keyWord !== '') {
+                                var searchUrl = baseUrl + keyWord;
+                                resultStore.proxy = new Ext.data.ScriptTagProxy({
+                                    url: searchUrl
+                                });
+                                resultGrid.title = 'Search result';
+                                resultGrid.store = resultStore;
+                                resultPanel.add(resultGrid);
+                                resultPanel.doLayout();
+                                resultGrid.show();
+                                resultStore.load();
+                            } else {
+                                Ext.Msg.alert('Empty search field!','Enter desired location in the search field');
+                            }
                         }
                     }
                 ]
