@@ -40,9 +40,25 @@
             return '<b>' + val + '</b>'
         };
 
+        var checkboxSel = new Ext.grid.CheckboxSelectionModel({
+            singleSelect: true,
+            checkOnly: true,
+            header: 'Add to favourites',
+            listeners: {
+                rowselect: {
+                    fn: function(sm,index,record) {
+                        favouriteStore.add(record);
+                        console.log(favouriteStore);
+                        Ext.Msg.alert('Record saved','Record has been added to your favorites');
+                    }
+                }
+            }
+        });
+
         var resultGrid = new Ext.grid.GridPanel({
             title: 'Result',
             columns: [
+                checkboxSel,
                 {header: "Photo", width: 100, dataIndex: 'thumb_url', renderer: renderThumbnail},
                 {header: "Title", width: 300, dataIndex: 'title', sortable: true, renderer: renderTitle},
                 {header: "Summary", width: 300, dataIndex: 'summary', sortable: true, id: 'summary'},
@@ -51,23 +67,24 @@
             autoExpandColumn: 'summary',
             hidden: true,
             loadMask: true,
-            sm: new Ext.grid.RowSelectionModel({
-                singleSelect: true
-            }),
-            tbar: [{
-                text: 'Add to favorites',
-                onClick: function() {
-                    var sm = resultGrid.getSelectionModel();
-                    if (sm.hasSelection()) {
-                        var sel = sm.getSelected();
-                        favouriteStore.add(sel);
-                        console.log(favouriteStore);
-                        Ext.Msg.alert('Record saved','Record has been added to your favorites');
-                    } else {
-                        Ext.Msg.alert('Select a row!','No row was selected');
-                    }
-                }
-            }]
+            sm: checkboxSel,
+//            sm: new Ext.grid.RowSelectionModel({
+//                singleSelect: true
+//            }),
+//            tbar: [{
+//                text: 'Add to favourites',
+//                onClick: function() {
+//                    var sm = resultGrid.getSelectionModel();
+//                    if (sm.hasSelection()) {
+//                        var sel = sm.getSelected();
+//                        favouriteStore.add(sel);
+//                        console.log(favouriteStore);
+//                        Ext.Msg.alert('Record saved','Record has been added to your favorites');
+//                    } else {
+//                        Ext.Msg.alert('Select a row!','No row was selected');
+//                    }
+//                }
+//            }]
         });
 
         Ext.onReady(function() {
@@ -102,6 +119,7 @@
                             } else {
                                 resultGrid.title = 'Favourites';
                                 resultGrid.store = favouriteStore;
+                                resultGrid.getView().scrollToTop();
                                 resultGrid.getView().refresh();
                             }
                         }
@@ -111,7 +129,14 @@
                         width: 300,
                         height: 25,
                         name: 'keyWord',
-                        colspan: 2
+                        colspan: 2,
+                        listeners: {
+                            specialkey: function(f,e){
+                                if (e.getKey() === e.ENTER) {
+                                    search(searchForm);
+                                }
+                            }
+                        }
                     },{
                         xtype: 'button',
                         text: 'GO',
@@ -119,26 +144,31 @@
                         height: 25,
                         colspan: 2,
                         cellCls: 'highlight',
-                        onClick: function () {
-                            var keyWord = searchForm.getForm().findField('keyWord').getValue();
-                            if (keyWord !== '') {
-                                var searchUrl = baseUrl + keyWord;
-                                resultStore.proxy = new Ext.data.ScriptTagProxy({
-                                    url: searchUrl
-                                });
-                                resultGrid.title = 'Search result';
-                                resultGrid.store = resultStore;
-                                resultPanel.add(resultGrid);
-                                resultPanel.doLayout();
-                                resultGrid.show();
-                                resultStore.load();
-                            } else {
-                                Ext.Msg.alert('Empty search field!','Enter desired location in the search field');
-                            }
+                        onClick: function() {
+                            search(searchForm);
                         }
                     }
                 ]
             });
+
+            var search = function(form) {
+                var keyWord = form.getForm().findField('keyWord').getValue();
+                if (keyWord !== '') {
+                    var searchUrl = baseUrl + keyWord;
+                    resultStore.proxy = new Ext.data.ScriptTagProxy({
+                        url: searchUrl,
+//                        timeout: 3000
+                    });
+                    resultGrid.title = 'Search result';
+                    resultGrid.store = resultStore;
+                    resultPanel.add(resultGrid);
+                    resultPanel.doLayout();
+                    resultGrid.show();
+                    resultStore.load();
+                } else {
+                    Ext.Msg.alert('Empty search field!','Enter desired location in the search field');
+                }
+            };
 
             searchPanel.add(searchForm);
             searchPanel.doLayout();
